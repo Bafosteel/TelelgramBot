@@ -3,7 +3,7 @@ from random import randrange
 from AdvCheck import item_is_available,price_change
 import time
 
-bot = telebot.TeleBot('1246015474:AAE_NKdBl8yzf89zjoJfaxOhd3rYnsn-llQ')
+bot = telebot.TeleBot('###############################')
 keyboard = telebot.types.ReplyKeyboardMarkup(True)
 keyboard.row('Привет','Пока', 'Стикер')
 keyboard.row('Разовая проверка', "Добавить Сайты","Удалить Сайты")

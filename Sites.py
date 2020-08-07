@@ -3,16 +3,10 @@ from bs4 import BeautifulSoup
 
 class MasterClass(object):
     def __init__(self):
-        self.header = {'User-agent':'Mozilla/5.0 (Windows NT 6.3; Win64; x64; rv:79.0)'+ \
-                           ' Gecko/20100101 Firefox/79.0', # Создаем заголовок, чтобы сайты не воспринимали нас как бота
-              'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-              'Accept-language':'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3'}
-        self.cookies = dict(cookies_are='session=4b082e00-074c-75f7-4761-4fb12bbb343b; __utma=12798129.510440631.1596800516.'
-                               '1596800516.1596800516.1; __utmc=12798129;' + \
-                               ' __utmz=12798129.1596800516.1.1.utmcsr=google|utmccn=(organic)|utmcmd=organic|' + \
-                               'utmctr=(not%20provided); __gads=ID=19506182921d16b7:T=1596800516:S=ALNI' + \
-                               '_MY-XwLcuZvDvxMnb7lEx3kAG7ideQ; __qca=P0-23977826-1596800516655;' + \
-                               ' _ga=GA1.2.1387315142.1596800524; _gid=GA1.2.525403005.1596800524')
+        self.header = {'User-agent':'#####################', # Создаем заголовок, чтобы сайты не воспринимали нас как бота
+              'Accept':'######################',
+              'Accept-language':'#########################'}
+        self.cookies = dict(cookies_are='###################')
         self.soup_type='lxml'
         self.info = ''
         self.price = ''
