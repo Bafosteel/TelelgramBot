@@ -1,9 +1,9 @@
-﻿import telebot
+import telebot
 from random import randrange
 from AdvCheck import item_is_available,price_change
 import time
 
-bot = telebot.TeleBot('############################') #post your token here
+bot = telebot.TeleBot('1246015474:AAE_NKdBl8yzf89zjoJfaxOhd3rYnsn-llQ')
 keyboard = telebot.types.ReplyKeyboardMarkup(True)
 keyboard.row('Привет','Пока', 'Стикер')
 keyboard.row('Разовая проверка', "Добавить Сайты","Удалить Сайты")
