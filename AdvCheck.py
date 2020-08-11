@@ -1,59 +1,73 @@
-import requests
-from bs4 import BeautifulSoup
+from Sites import OzonSite, BeruSite, LamodaSite, WildBerriesSite, AptekaSite, DetMitSite
 
 def item_is_available(url):
-    header = {'User-agent':'##################', # Создаем заголовок, чтобы сайты не воспринимали нас как бота
-              'Accept':'####################################',
-              'Accept-language':'########################'}
-    cookies = dict(cookies_are='#######################')
-    response = requests.get(url,headers=header, cookies=cookies)
     info = ''
-    soup = BeautifulSoup(response.text, 'lxml')
     if 'ozon.ru' in url: # Парсим озон
-        for h2 in soup.findAll('h2'):
-            if "Этот товар закончился" in str(h2.text).replace("\n","").replace("    ",""):
-               info = "Товар {} закончился, либо остались только некоторые варианты".format(url)
-               print(info)
+        oz = OzonSite()
+        info = oz.extract_data(url)
     elif 'beru.ru' in url: # Парсим беру
-        for span in soup.findAll('span'):
-            if 'в наличии на складе' in span.text.lower():
-                info='ok'
-        if len(info) != 0:
-            info = "Товар {} закончился, либо доставка возможна только позднее".format(url)
-            print(info)
+        br = BeruSite()
+        info = br.extract_data(url)
     elif 'lamoda.ru' in url: # Парсим lamoda
-        for div  in soup.findAll('div',attrs={'class':'vue-widget'}):
-            rating = div.find('d-add-to-cart') # В тэге хранится информация о наличии товара в магазине
-            if rating:
-                if rating['product-is-available']:
-                    print('ok')
-                    info='ok'
-                else:
-                    info = "Товар {} закончился, либо остались только некоторые размеры".format(url)
-                    print(info)
+        ld = LamodaSite()
+        info = ld.extract_data(url)
     elif 'wildberries.ru' in url: # Парсим wildberries
-        for button in soup.findAll('button',attrs={'class':'c-btn-main-lg-v1 j-add-to-wait'}):
-            if 'hide' not in button['class']:
-                if 'в лист ожидания' in button.text.lower():
-                    info = "Товар {} закончился, либо остались только некоторые экземпляры".format(url)
+        wb = WildBerriesSite()
+        info = wb.extract_data(url)
     elif 'apteka.ru' in url: # Парсим аптеку
-        for div in soup.findAll('div', attrs={'class':'stickProductCard__notAvailable'}):
-            if 'нет в наличии' in div.text.lower():
-                info = "Товар {} закончился, либо остались только некоторые экземпляры".format(url)
+        ap = AptekaSite()
+        info = ap.extract_data(url)
     elif 'detmir.ru' in url: # Парсим детский мир
-        for span in soup.findAll('span'):
-            if 'нет в наличии' in span.text.lower():
-                info = "Товар {} закончился, либо остались только некоторые экземпляры".format(url)
+        dt = DetMitSite()
+        info = dt.extract_data(url)
     else:
         pass
     return info
 
 
-def price_change(): # Данная функция отслеживает изменение цены, в том числе наличие скидки
-    pass
+def price_change(url): # Данная функция отслеживает изменение цены, в том числе наличие скидки
+    price = ''
+    if 'ozon' in url:
+        oz = OzonSite()
+        oz.price_changes(url)
+    elif 'beru.ru' in url:
+        br = BeruSite()
+        br.price_changes(url)
+    elif 'lamoda.ru' in url:
+        ld = LamodaSite()
+        ld.price_changes(url)
+    elif 'wildberries.ru' in url:
+        wld = WildBerriesSite()
+        wld.price_changes(url)
+    elif 'apteka.ru' in url:
+        apt = AptekaSite()
+        apt.price_changes(url)
+    elif 'detmir.ru' in url:
+        dt = AptekaSite()
+        dt.price_changes(url)
+    else:
+        pass
 
-#link = 'https://www.ozon.ru/context/detail/id/153593977/'
-link = 'https://www.detmir.ru/product/index/id/2684371/'
-item_is_available(link)
+    return price
 
+link = 'https://www.ozon.ru/context/detail/id/153593977/'
+#link = 'https://www.detmir.ru/product/index/id/2684371/'
+#item_is_available(link)
+#u = 'https://beru.ru/product/nabor-ruchek-sharikovykh-sinikh-4-sht-g-3-nk-114790002/100957275453?show-uid=159715192970007211489061177&offerid=HgAOaSIp3AqHnzD40LnLvA'
+
+#u = 'https://www.ozon.ru/product/tufli-kotofey-177582005/'
+#u = 'https://www.ozon.ru/product/smartfon-huawei-smartfon-huawei-y8p-128gb-serebristyy-176016444/'
+
+#u='https://www.lamoda.ru/p/to172emibby1/clothes-tomtailor-shorty/'
+#u = 'https://www.lamoda.ru/p/mp002xm07y07/shoes-outventure-kedy/'
+
+#u = 'https://www.wildberries.ru/catalog/11316015/detail.aspx?targetUrl=GP'
+#u = 'https://www.wildberries.ru/catalog/11731387/detail.aspx?targetUrl=MI'
+
+#u = 'https://apteka.ru/product/kasha-7-zlakov-s-yagodami-na-kozem-moloke-2000-5e4256f0aaa70200013c9503/'
+#u = 'https://apteka.ru/product/zhavelon-n300-tabl-5e3274d541134b00010610a6'
+
+#u = 'https://www.detmir.ru/product/index/id/1814601/'
+u = 'https://www.detmir.ru/product/index/id/3148103/'
+price_change(u)
 

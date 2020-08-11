@@ -2,8 +2,10 @@ import telebot
 from random import randrange
 from AdvCheck import item_is_available,price_change
 import time
+from Databases import insert_data,select_data,delete_data
 
-bot = telebot.TeleBot('###############################')
+
+bot = telebot.TeleBot('************')
 keyboard = telebot.types.ReplyKeyboardMarkup(True)
 keyboard.row('Привет','Пока', 'Стикер')
 keyboard.row('Разовая проверка', "Добавить Сайты","Удалить Сайты")
@@ -24,7 +26,9 @@ stickers = {1:'CAACAgIAAxkBAAEBJMVfKSa4sXF8U5Cr6S5g9-5VBaV8jwACGQEAAtLdaQVS6DvPq
 
 sites = {}
 data = {}
-status = {}
+status_tracking = {}
+state = dict()
+state['data'] = {'last_q':True}
 @bot.message_handler(commands=['start'])
 def start_message(message):
     bot.send_message(message.chat.id,'Привет, чтобы получить список команд, напиши: /help',reply_markup=keyboard)
@@ -35,13 +39,14 @@ def start_message(message):
 
 
 @bot.message_handler(func=lambda message: message.entities is not None)
-def delete_links(message):
+def add_links(message):
     for entity in message.entities:  # Пройдёмся по всем entities в поисках ссылок
         # url - обычная ссылка, text_link - ссылка, скрытая под текстом
         if entity.type in ["url", "text_link"]:
             # Мы можем не проверять chat.id, он проверяется ещё в хэндлере
             bot.send_message(message.chat.id, "Объект Кампания-ссылка добавлен для отслеживания")
-            sites['test'] = str(message.text)[str(message.text).find(':') + 1:]
+            sites[str(message.text)[:str(message.text).find(':')]] = str(message.text)[str(message.text).find(':') + 1:]
+            insert_data(message)
         else:
             return
 
@@ -58,32 +63,33 @@ def send_text(message):
 
     elif message.text.lower() == 'стикер':
         bot.send_message(message.chat.id,'{}, Отправь мне какой-нибудь стикер,'.format(message.from_user.first_name) + \
-                                         ' а я тебе скину скину какой-нибудь другой в ответ')
+                                         'а я тебе скину скину какой-нибудь другой в ответ')
         bot.send_sticker(message.chat.id, 'CAACAgIAAxkBAAEBJPNfKSs1B3-xxnTTF3tr-13taL07kwACKgAD3B1fMqNoeCFD9xUFGgQ')
 
     elif message.text.lower() == 'разовая проверка':
-        info = item_is_available('https://www.ozon.ru/context/detail/id/153593977/')
         if len(sites) == 0:
             no_sites_available(message)
         else:
-            if "закончился" in info:
-                bot.send_message(message.chat.id,str('{}, Ответ на ваш запрос:'.format(message.from_user.first_name))
-                                 + str(' '+ info))
-            else:
-                bot.send_message(message.chat.id,
-                                 str('{}, Ответ на ваш запрос:'.format(message.from_user.first_name)) +
-                                 str(' Все хорошо'))
-                bot.send_sticker(message.chat.id,
-                                 'CAACAgIAAxkBAAEBJndfKm89iBY2PEK6fLM-3G7Ghz1CHwACoQUAAiMFDQABTrD9oNrHRh4aBA')
-
+            for site in sites:
+                print(sites[site])
+                info = item_is_available(sites[site])
+                if "закончился" in info:
+                    bot.send_message(message.chat.id,str('{}, Ответ на ваш запрос:'.format(message.from_user.first_name))
+                                     + str(' '+ info))
+                else:
+                    bot.send_message(message.chat.id,
+                                    str('{}, Ответ на ваш запрос:'.format(message.from_user.first_name)) +
+                                    str(' Все хорошо'))
+                    bot.send_sticker(message.chat.id,
+                                    'CAACAgIAAxkBAAEBJndfKm89iBY2PEK6fLM-3G7Ghz1CHwACoQUAAiMFDQABTrD9oNrHRh4aBA')
     elif message.text.lower() == 'начать отслеживание':
         if len(sites) != 0:
-            status['value'] = 1
+            status_tracking['value'] = 1
             adv_tracking(message)
         else:
             no_sites_available(message)
     elif message.text.lower() == 'остановить отслеживание':
-        status['value'] = 0
+        status_tracking['value'] = 0
     elif message.text.lower() == 'добавить сайты':
         bot.send_message(message.chat.id,'{}, Отправь мне ссылки для '.format(message.from_user.first_name) + \
                                          'проверки в следующем виде Название:Сайт')
@@ -98,7 +104,8 @@ def send_text(message):
 
 
 def adv_tracking(message):
-    if status['value'] != 0:
+    if status_tracking['value'] != 0:
+        #sites = select_data()
         for site in sites:
             print(sites[site])
             info = item_is_available(sites[site])
