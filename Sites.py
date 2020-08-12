@@ -1,14 +1,13 @@
 import requests
 from bs4 import BeautifulSoup
 from json import loads, decoder
+from Settings import header, cookies, soup_type
 
 class MasterClass(object):
     def __init__(self):
-        self.header = {'User-agent':'****', # Создаем заголовок, чтобы сайты не воспринимали нас как бота
-              'Accept':'*****',
-              'Accept-language':'******'}
-        self.cookies = dict(cookies_are='cookies')
-        self.soup_type='lxml'
+        self.header = header
+        self.cookies = cookies
+        self.soup_type = soup_type
         self.info = ''
         self.price = ''
 
