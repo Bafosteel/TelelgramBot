@@ -1,9 +1,10 @@
 import telebot
 from random import randrange
 from AdvCheck import item_is_available, price_change
-import time
 from Databases import DataBase
 from Settings import token, stickers, States
+import threading
+import pandas as pd
 
 bot = telebot.TeleBot(token)
 keyboard = telebot.types.ReplyKeyboardMarkup(True)
@@ -18,13 +19,13 @@ keyboard1.row('Назад',)
 keyboard2=telebot.types.ReplyKeyboardMarkup(True)
 keyboard2.row('Завершить',)
 
-sites = {}
 status_tracking = {}
 state = {}
 
+
 def get_current_state(user_id):
         try:
-            return state[user_id] # Если используете Vedis версии ниже, чем 0.7.1, то .decode() НЕ НУЖЕН
+            return state[user_id]
         except KeyError:  # Если такого ключа почему-то не оказалось
             return States.S_START.value
 
@@ -58,21 +59,23 @@ def sticker(message):
 @bot.message_handler(commands=['check'])
 def check_data(message):
     db = DataBase()
-    s = db.select_data()
-    print(s)
-    if len(s) == 0:
+    sites = db.select_data()
+    print(sites)
+    if len(sites) == 0:
         no_sites_available(message)
     else:
-        for site in s:
-            info = item_is_available(s[site])
+        for site in sites:
+            info = item_is_available(sites[site])
+            price = price_change(sites[site])
             if "закончился" in info:
                 bot.send_message(message.chat.id, str('{}, Ответ на ваш запрос:'.format(message.from_user.first_name))
                                  + str(' ' + info))
+            elif 'изменилась' in price:
+                bot.send_message(message.chat.id, price)
             else:
                 bot.send_message(message.chat.id,
                                  str('{}, Ответ на ваш запрос:'.format(message.from_user.first_name)) +
                                  str(' Все хорошо'))
-
 
 
 @bot.message_handler(func=lambda message: get_current_state(message.chat.id) == States.S_SEND_STICKER.value)
@@ -88,22 +91,34 @@ def send_st(message):
 
 
 @bot.message_handler(func=lambda message: get_current_state(message.chat.id) == States.S_ENTER_LINK)
+@bot.message_handler(content_types=['document'])
 def add_links(message):
-    print('das')
     try:
-        if message.text.lower() == 'завершить':
+        if message.content_type == 'document':
+            file_id = bot.get_file(message.document.file_id)
+            excel_file = bot.download_file(file_id.file_path)
+            data_pandas = pd.read_excel(excel_file, header=None, names=['name', 'link'])
+            name = data_pandas['name'].values.tolist()
+            link = data_pandas['link'].values.tolist()
+            db = DataBase()
+            for i, v in zip(name, link):
+                db.insert_data(i+":"+v)
+                bot.send_message(message.chat.id, "Объект Кампания-ссылка добавлен для отслеживания",
+                                 reply_markup=keyboard2)
+        elif message.text.lower() == 'завершить':
             set_reset(message)
         else:
             for entity in message.entities:  # Пройдёмся по всем entities в поисках ссылок
                 # url - обычная ссылка, text_link - ссылка, скрытая под текстом
                 if entity.type in ["url", "text_link"]:
                     db = DataBase()
-                    db.insert_data(message)
+                    db.insert_data(message.text)
                     bot.send_message(message.chat.id, "Объект Кампания-ссылка добавлен для отслеживания",
                                      reply_markup=keyboard2)
                 else:
                     bot.send_message(message.chat.id, "Кажется, ты отправил мне что-то другое", reply_markup=keyboard2)
-    except (AttributeError, TypeError):
+    except (AttributeError, TypeError) as ex:
+        print(ex)
         bot.send_message(message.chat.id, "Кажется, ты отправил мне что-то другое", reply_markup=keyboard2)
 
 @bot.message_handler(func=lambda message: message.entities is not None)
@@ -142,42 +157,58 @@ def send_text(message):
         if len(DataBase().select_data()) != 0:
             status_tracking['value'] = 1
             state[message.chat.id] = States.S_START_TRACKING_CAMPAIGN
-            adv_tracking(message)
+            #adv_tracking(message)
+            make_thread(message)
         else:
             no_sites_available(message)
     elif message.text.lower() == 'остановить отслеживание':
         status_tracking['value'] = 0
         state[message.chat.id] = States.S_STOP_TRACKING_CAMPAIGN
+        bot.send_message(message.chat.id,'Отслеживание остановлено')
+
     elif message.text.lower() == 'добавить сайты':
-        bot.send_message(message.chat.id,'{}, Отправь мне ссылки для '.format(message.from_user.first_name) + \
-                                         'проверки в следующем виде Название:Сайт')
+        bot.send_message(message.chat.id, '{}, Отправь мне ссылки для '.format(message.from_user.first_name) + \
+                         'проверки в следующем виде Название:Сайт.\n' + \
+                         'Если же у тебя большой объем данных, то отправь мне их в виде ' + \
+                         'Excel таблицы, где 1 столбец - кампании, а второй - ссылки'
+                         , reply_markup=keyboard2)
         bot.send_sticker(message.chat.id, 'CAACAgIAAxkBAAEBJPNfKSs1B3-xxnTTF3tr-13taL07kwACKgAD3B1fMqNoeCFD9xUFGgQ')
         state[message.chat.id] = States.S_ENTER_LINK
 
     elif message.text.lower() == 'удалить сайты':
         bot.send_message(message.chat.id,'{}, Отправь мне название кампании '.format(message.from_user.first_name) + \
-                                         'для удаления пары кампания-сайт')
+                                         'для удаления пары кампания-сайт', reply_markup=keyboard2)
         bot.send_sticker(message.chat.id, 'CAACAgIAAxkBAAEBJPNfKSs1B3-xxnTTF3tr-13taL07kwACKgAD3B1fMqNoeCFD9xUFGgQ')
         state[message.chat.id] = States.S_ENTER_CAMPAIGN_NAME
     else:
         bot.send_message(message.chat.id, 'Прости, я тебя не понимаю')
         bot.send_sticker(message.chat.id, 'CAACAgIAAxkBAAEBJMFfKSUEzuXlw-KDLC8ZAT-jHfMbEQACGAEAAtLdaQV3nTANMOlAPxoE')
 
-def adv_tracking(message):
+
+def make_thread(message):
+    # create timer to rerun this method in 3 days (in seconds)
+    global my_timer
     if status_tracking['value'] != 0:
-        sites = DataBase().select_data()
-        for site in sites:
-            print(sites[site])
-            info = item_is_available(sites[site])
-            price = price_change(sites[site])
-            if 'закончился' in info:
-                bot.send_message(message.chat.id, str(site)+" - "+ info)
-            if 'изменилась' in price:
-                bot.send_message(message.chat.id, price)
-        time.sleep(5) #14400
+        my_timer = threading.Timer(144000, make_thread,[message])
+        my_timer.start()
+        # call function
         adv_tracking(message)
     else:
+        my_timer.cancel()
         return bot.send_message(message.chat.id, 'Отслеживание остановлено')
+
+def adv_tracking(message):
+    sites = DataBase().select_data()
+    for site in sites:
+        print(sites[site])
+        info = item_is_available(sites[site])
+        price = price_change(sites[site])
+        if 'закончился' in info:
+            bot.send_message(message.chat.id, str(site)+" - "+ info)
+        if 'изменилась' in price:
+            bot.send_message(message.chat.id, price)
+        #time.sleep(5) #14400
+
 
 def no_sites_available(message):
     bot.send_message(message.chat.id,

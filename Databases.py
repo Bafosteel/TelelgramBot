@@ -21,7 +21,7 @@ class DataBase(object):
 
     def insert_data(self, message):
         self.create_data()
-        val = (str(message.text)[:str(message.text).find(':')], str(message.text)[str(message.text).find(':') + 1:])
+        val = (str(message)[:str(message).find(':')], str(message)[str(message).find(':') + 1:])
         sql = "INSERT INTO users (campaign, links) VALUES (%s,%s)"
         self.cursor.execute(sql, val)
         return self.db.commit()
